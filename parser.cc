@@ -62,11 +62,156 @@ Token Parser::peek()
     return t;
 }
 
+void parse_program() {
+    //    program -> var_section body
+    parse_var_section();
+    parse_body();
+    
+
+
+}
+
+void parse_var_section() {
+    //    var_section -> id_list SEMICOLON
+    parse_id_list();
+    expect(SEMICOLON);
+    
+}
+
+void parse_id_list() {
+    //    id_list -> ID COMMA id_list 
+    //    id_list -> ID
+    
+    expect(ID);
+    Token t = peek();
+    if(t.token_type == COMMA) {
+        expect(COMMA);
+        parse_id_list();
+    }
+    
+}
+
+void parse_body() {
+    //    body -> LBRACE stmt_list RBRACE
+    expect(LBRACE);
+    parse_stmt_list();
+    expect(RBRACE);
+
+}
+
+void parse_stmt_list() {
+    //    stmt_list -> stmt
+    //    stmt_list -> stmt stmt_list
+    
+    parse_stmt();
+    Token t = peek();
+    //TODO: need to complete stmt_list 
+
+}
+
+void parse_stmt() {
+    //    stmt -> assign_stmt
+    //    stmt -> print_stmt
+    //    stmt -> while_stmt
+    //    stmt -> if_stmt
+    //    stmt -> switch_stmt;
+    
+    //TODO: need to comlete everything
+    
+}
+
+void assign_stmt() {
+    //    assign_stmt -> ID EQUAL primary SEMICOLON
+    //    assign_stmt -> ID EQUAL expr SEMICOLON
+    
+    expect(ID);
+    expect(EQUAL);
+    //TODO: parse_primary() parse_expr()
+    expect(SEMICOLON);
+
+}
+
+void parse_expr() {
+    //    expr -> primary op primary
+    parse_primary();
+    parse_op();
+    parse_primary();
+
+}
+
+void parse_primary() {
+    //    primary -> ID
+    //    primary -> NUM
+    
+    Token t = peek();
+    if(t.token_type == ID) {
+        expect(ID);
+    }
+    if(t.token_type == NUM) {
+        expect(NUM);
+    }
+}
+
+void parse_op() {
+    //    op -> PLUS 
+    //    op -> MINUS 
+    //    op -> MULT 
+    //    op -> DIV
+    
+    Token t = peek();
+    if(t.token_type == PLUS) {
+        expect(PLUS);
+    }
+    if(t.token_type == MINUS) {
+        expect(MINUS);
+    }
+    if(t.token_type == MULT) {
+        expect(MULT);
+    }
+    if(t.token_type == DIV) {
+        expect(DIV);
+    }    
+}
+
+void parse_print_stmt() {
+    //    print_stmt -> print ID SEMICOLON
+    //TODO: this thingie
+
+}
+
+void parse_while_stmt() {
+    //    while_stmt -> WHILE condition body
+    expect(WHILE);
+    parse_condition();
+    parse_body();
+
+}
+
+void parse_if_stmt() {
+    //    if_stmt -> IF condition body
+    expect(IF);
+    parse_condition();
+    parse_body();
+    
+}
+
+void parse_condition() {
+    //    condition -> primary relop primary
+    parse_primary();
+    parse_relop();
+    parse_primary();
+
+}
+
+void parse_relop() {
+    //    relop -> GREATER 
+    //    relop -> LESS 
+    //    relop -> NOTEQUAL
+    
 
 
 
-
-
+}
 
 
 
