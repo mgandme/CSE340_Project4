@@ -199,7 +199,7 @@ void parse_op() {
 
 void parse_print_stmt() {
     //    print_stmt -> print ID SEMICOLON
-    Token t = lexer.GetToken();
+    expect(PRINT);
     expect(ID);
     expect(SEMICOLON);
 }
