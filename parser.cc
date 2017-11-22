@@ -106,7 +106,10 @@ void parse_stmt_list() {
     parse_stmt();
     Token t = peek();
     //TODO: need to complete stmt_list 
-
+    if(t.token_type == ID || t.token_type == WHILE || t.token_type == IF
+	|| t.token_type == SWITCH || t.token_type ==  t.token_type == PRINT) {
+	parse_stmt_list();
+    }
 }
 
 void parse_stmt() {
@@ -116,7 +119,22 @@ void parse_stmt() {
     //    stmt -> if_stmt
     //    stmt -> switch_stmt;
     
-    //TODO: need to comlete everything
+    Token t = peek();
+    if(t.token_type == ID) {
+        parse_assign_stmt();
+    }
+    else if(t.token_type == WHILE) {
+	parse_while_stmt();
+    }
+    else if(t.token_type == IF) {
+	parse_if_stmt();
+    }
+    else if(t.token_type == SWITCH) {
+        parse_switch_stmt();
+    }
+    else {
+	parse_print_stmt();
+    }
     
 }
 
@@ -126,7 +144,13 @@ void assign_stmt() {
     
     expect(ID);
     expect(EQUAL);
-    //TODO: parse_primary() parse_expr()
+    Token t = peek();
+    if(t.token_type == ID) {
+        parse_primary();
+    }
+    else {
+	parse_expr();
+    }
     expect(SEMICOLON);
 
 }
@@ -175,8 +199,9 @@ void parse_op() {
 
 void parse_print_stmt() {
     //    print_stmt -> print ID SEMICOLON
-    //TODO: this thingie
-
+    Token t = lexer.GetToken();
+    expect(ID);
+    expect(SEMICOLON);
 }
 
 void parse_while_stmt() {
@@ -207,12 +232,67 @@ void parse_relop() {
     //    relop -> GREATER 
     //    relop -> LESS 
     //    relop -> NOTEQUAL
-    
-
-
-
+    Token t = peek();
+    if(t.token_type == GREATER) {
+	expect(GREATER);
+    }
+    if(t.token_type == LESS) {
+	expect(LESS);
+    }
+    if(t.token_type == NOTEQUAL) {
+	expect(NOTEQUAL);
+    } 
 }
 
+void parse_switch_stmt() {
+    //    switch_stmt -> SWITCH ID LBRACE case_list RBRACE
+    //    switch_stmt -> SWITCH ID LBRACE case_list default_case RBRACE
+    expect(SWITCH);
+    expect(ID);
+    expect(LBRACE);
+    parse_case_list();
+    Token t = peek();
+    if(t.token_type == DEFAULT) {
+	parse_default_case();
+    }
+    expect(RBRACE);
+}
+
+void parse_for_stmt() {
+    //    for_stmt -> FOR LPAREN assign_stmt SEMICOLON condition SEMICOLON RPAREN body
+    expect(LPAREN);
+    parse_assign_stmt();
+    expect(SEMICOLON);
+    parse_condition();
+    expect(SEMICOLON);
+    expect(RPAREN);
+    parse_body();
+}
+
+void parse_case_list() {
+    //    case_list -> case case_list
+    //    case_list -> case
+    parse_case();
+    Token t = peek();
+    if(t.token_type == CASE) {
+	parse_case_list();
+    }
+}
+
+void parse_case() {
+    //    case -> CASE NUM COLON body
+    expect(CASE);
+    expect(NUM);
+    expect(COLON);
+    parse_body();
+}
+
+void parse_default_case() {
+    //    default_case -> DEFAULT COLON body
+    expect(DEFAULT);
+    expect(COLON);
+    parse_body();
+}
 
 
 
