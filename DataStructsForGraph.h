@@ -1,3 +1,8 @@
+struct ValueNode {
+	
+
+
+
 struct AssignmentStatement {
     struct ValueNode *left_hand_side;
     struct ValueNode *operand1;
@@ -26,5 +31,21 @@ struct StatementNode {
 
 }
 
+//IF statement declaration
 
+struct IfStatement {
+    ConditionalOperatorType condition_op;
+    struct ValueNode *condition_operand1;
+    struct ValueNode *condition_operand2;
+    
+    struct StatementNode *trueBranch;
+    struct StatementNOde *falseBranch;
+
+}
+
+//GOTO statement declaration
+
+struct GotoStatement {
+    struct StatementNode *target;
+}
 

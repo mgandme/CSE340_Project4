@@ -65,7 +65,7 @@ Token Parser::peek()
 void parse_program() {
     //    program -> var_section body
     parse_var_section();
-    parse_body();
+    parse_body(); //returns a StatementNode*
     
 
 
@@ -91,46 +91,58 @@ void parse_id_list() {
     
 }
 
-void parse_body() {
+struct StatementNode* parse_body() {
     //    body -> LBRACE stmt_list RBRACE
     expect(LBRACE);
-    parse_stmt_list();
+    struct StatementNode *st;
+    st = parse_stmt_list();
     expect(RBRACE);
-
+    return st;
 }
 
-void parse_stmt_list() {
+struct StatementNode* parse_stmt_list() {
     //    stmt_list -> stmt
     //    stmt_list -> stmt stmt_list
     
-    parse_stmt();
+    struct StatementNode *st;
+    struct StatementNode *st1;
+
+    st = parse_stmt();
     Token t = peek();
-    //TODO: need to complete stmt_list 
+    
     if(t.token_type == ID || t.token_type == WHILE || t.token_type == IF
 	|| t.token_type == SWITCH || t.token_type ==  t.token_type == PRINT) {
-	parse_stmt_list();
+	st1 = parse_stmt_list();
+	//append st1 to st
+        st->next = st1;
+        return st;
+    }
+    else {
+	return st;
     }
 }
 
-void parse_stmt() {
+void parse_stmt() { //TODO: This is where you dissect lines of code
     //    stmt -> assign_stmt
     //    stmt -> print_stmt
     //    stmt -> while_stmt
     //    stmt -> if_stmt
     //    stmt -> switch_stmt;
     
+    
+
     Token t = peek();
     if(t.token_type == ID) {
-        parse_assign_stmt();
+        parse_assign_stmt();   //RETURNS AN AssignmentStatement* NODE;
     }
     else if(t.token_type == WHILE) {
-	parse_while_stmt();
+	parse_while_stmt();    //RETURNS A _______ * NODE
     }
     else if(t.token_type == IF) {
-	parse_if_stmt();
+	parse_if_stmt();       //RETURNS AN IfStatement* NODE;
     }
     else if(t.token_type == SWITCH) {
-        parse_switch_stmt();
+        parse_switch_stmt();   //RETURNS A _______ * NODE
     }
     else {
 	parse_print_stmt();
@@ -138,13 +150,18 @@ void parse_stmt() {
     
 }
 
-void assign_stmt() {
+void assign_stmt() { //Should return AssignmentStatement *node
     //    assign_stmt -> ID EQUAL primary SEMICOLON
     //    assign_stmt -> ID EQUAL expr SEMICOLON
     
+    AssignmentStatement *st = (AssignmentStatement*) malloc(sizeof(AssignmentStatement));
+    ValueNode *lhs = (ValueNode*) malloc(sizeof(ValueNode));
+    Token t = peek();
+    
+
     expect(ID);
     expect(EQUAL);
-    Token t = peek();
+    t = peek();
     if(t.token_type == ID) {
         parse_primary();
     }
