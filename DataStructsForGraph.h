@@ -1,6 +1,8 @@
 struct ValueNode {
-	
-
+    char *name;
+    StatementType type;
+    int val;	
+}
 
 
 struct AssignmentStatement {
