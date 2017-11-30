@@ -11,6 +11,8 @@
 #include <cstdlib>
 #include "parser.h"
 #include <string.h>
+#include <stdio.h>
+#include "DataStructsForGraph.h"
 /*
  *DATE : NOV. 4
  *TIME : 11:57 AM
@@ -62,7 +64,10 @@ Token Parser::peek()
     return t;
 }
 
-void parse_program() {
+struct ValueNode *list;
+
+
+void Parser::parse_program() {
     //    program -> var_section body
     parse_var_section();
     parse_body(); //returns a StatementNode*
@@ -71,27 +76,42 @@ void parse_program() {
 
 }
 
-void parse_var_section() {
+void Parser::parse_var_section() {
     //    var_section -> id_list SEMICOLON
-    parse_id_list();
+    list = parse_id_list();
+    struct ValueNode *p = list;
+    while(p != NULL) {
+        printf("%s\n", p->name);
+        p = p->next;
+    }
     expect(SEMICOLON);
     
 }
 
-void parse_id_list() {
+struct ValueNode* Parser::parse_id_list() {
     //    id_list -> ID COMMA id_list 
     //    id_list -> ID
+    Token t = peek();
+    struct ValueNode *item = (ValueNode*) malloc(sizeof(ValueNode));
+    item->name = new char[t.lexeme.size() + 1];
+    std::copy(t.lexeme.begin(), t.lexeme.end(), item->name);
+    item->name[t.lexeme.size()] = '\0';
+    
+    
+    //item->name = t.lexeme.c_str();
+    item->value = 0;
     
     expect(ID);
-    Token t = peek();
+    t = peek();
     if(t.token_type == COMMA) {
         expect(COMMA);
-        parse_id_list();
+        item->next = parse_id_list();
     }
+    return item;
     
 }
 
-struct StatementNode* parse_body() {
+struct StatementNode* Parser::parse_body() {
     //    body -> LBRACE stmt_list RBRACE
     expect(LBRACE);
     struct StatementNode *st;
@@ -100,14 +120,14 @@ struct StatementNode* parse_body() {
     return st;
 }
 
-struct StatementNode* parse_stmt_list() {
+struct StatementNode* Parser::parse_stmt_list() {
     //    stmt_list -> stmt
     //    stmt_list -> stmt stmt_list
     
     struct StatementNode *st;
     struct StatementNode *st1;
 
-    st = parse_stmt();
+    //st = parse_stmt();
     Token t = peek();
     
     if(t.token_type == ID || t.token_type == WHILE || t.token_type == IF
@@ -122,7 +142,7 @@ struct StatementNode* parse_stmt_list() {
     }
 }
 
-void parse_stmt() { //TODO: This is where you dissect lines of code
+void Parser::parse_stmt() { //TODO: This is where you dissect lines of code
     //    stmt -> assign_stmt
     //    stmt -> print_stmt
     //    stmt -> while_stmt
@@ -150,7 +170,7 @@ void parse_stmt() { //TODO: This is where you dissect lines of code
     
 }
 
-void assign_stmt() { //Should return AssignmentStatement *node
+void Parser::parse_assign_stmt() { //Should return AssignmentStatement *node
     //    assign_stmt -> ID EQUAL primary SEMICOLON
     //    assign_stmt -> ID EQUAL expr SEMICOLON
     
@@ -172,7 +192,7 @@ void assign_stmt() { //Should return AssignmentStatement *node
 
 }
 
-void parse_expr() {
+void Parser::parse_expr() {
     //    expr -> primary op primary
     parse_primary();
     parse_op();
@@ -180,7 +200,7 @@ void parse_expr() {
 
 }
 
-void parse_primary() {
+void Parser::parse_primary() {
     //    primary -> ID
     //    primary -> NUM
     
@@ -193,7 +213,7 @@ void parse_primary() {
     }
 }
 
-void parse_op() {
+void Parser::parse_op() {
     //    op -> PLUS 
     //    op -> MINUS 
     //    op -> MULT 
@@ -214,14 +234,14 @@ void parse_op() {
     }    
 }
 
-void parse_print_stmt() {
+void Parser::parse_print_stmt() {
     //    print_stmt -> print ID SEMICOLON
     expect(PRINT);
     expect(ID);
     expect(SEMICOLON);
 }
 
-void parse_while_stmt() {
+void Parser::parse_while_stmt() {
     //    while_stmt -> WHILE condition body
     expect(WHILE);
     parse_condition();
@@ -229,7 +249,7 @@ void parse_while_stmt() {
 
 }
 
-void parse_if_stmt() {
+void Parser::parse_if_stmt() {
     //    if_stmt -> IF condition body
     expect(IF);
     parse_condition();
@@ -237,7 +257,7 @@ void parse_if_stmt() {
     
 }
 
-void parse_condition() {
+void Parser::parse_condition() {
     //    condition -> primary relop primary
     parse_primary();
     parse_relop();
@@ -245,7 +265,7 @@ void parse_condition() {
 
 }
 
-void parse_relop() {
+void Parser::parse_relop() {
     //    relop -> GREATER 
     //    relop -> LESS 
     //    relop -> NOTEQUAL
@@ -261,7 +281,7 @@ void parse_relop() {
     } 
 }
 
-void parse_switch_stmt() {
+void Parser::parse_switch_stmt() {
     //    switch_stmt -> SWITCH ID LBRACE case_list RBRACE
     //    switch_stmt -> SWITCH ID LBRACE case_list default_case RBRACE
     expect(SWITCH);
@@ -275,7 +295,7 @@ void parse_switch_stmt() {
     expect(RBRACE);
 }
 
-void parse_for_stmt() {
+void Parser::parse_for_stmt() {
     //    for_stmt -> FOR LPAREN assign_stmt SEMICOLON condition SEMICOLON RPAREN body
     expect(LPAREN);
     parse_assign_stmt();
@@ -286,7 +306,7 @@ void parse_for_stmt() {
     parse_body();
 }
 
-void parse_case_list() {
+void Parser::parse_case_list() {
     //    case_list -> case case_list
     //    case_list -> case
     parse_case();
@@ -296,7 +316,7 @@ void parse_case_list() {
     }
 }
 
-void parse_case() {
+void Parser::parse_case() {
     //    case -> CASE NUM COLON body
     expect(CASE);
     expect(NUM);
@@ -304,7 +324,7 @@ void parse_case() {
     parse_body();
 }
 
-void parse_default_case() {
+void Parser::parse_default_case() {
     //    default_case -> DEFAULT COLON body
     expect(DEFAULT);
     expect(COLON);
@@ -651,7 +671,7 @@ void Parser::parse_relop()
 	syntax_error();
     }
 }
-
+*/
 void Parser::ParseInput()
 {
     parse_program();
@@ -663,11 +683,5 @@ int main()
     Parser parser;
 
     parser.ParseInput();
-    while(s != NULL) {
-	cout << s->begOfScope << endl;
-	cout << s->endOfScope << endl;
-	//cout << (string)s->table->tok->lexeme;
-	s = s->next;
-    }
 }
-*/
+

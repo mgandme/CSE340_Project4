@@ -17,11 +17,11 @@ class Parser {
         Token expect(TokenType expected_type);
         Token peek();
 
-        void parse_program();
+    void parse_program();
 	void parse_var_section();
-	void parse_id_list();
-	void parse_body();
-	void parse_stmt_list();
+	struct ValueNode* parse_id_list();
+	struct StatementNode* parse_body();
+	struct StatementNode* parse_stmt_list();
 	void parse_stmt();
 	void parse_assign_stmt();
 	void parse_expr();
