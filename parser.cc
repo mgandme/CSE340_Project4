@@ -69,21 +69,15 @@ struct ValueNode *list;
 
 void Parser::parse_program() {
     //    program -> var_section body
-    parse_var_section();
+
+    parse_var_section();  //Completed
     parse_body(); //returns a StatementNode*
-    
-
-
 }
 
 void Parser::parse_var_section() {
     //    var_section -> id_list SEMICOLON
+
     list = parse_id_list();
-    struct ValueNode *p = list;
-    while(p != NULL) {
-        printf("%s\n", p->name);
-        p = p->next;
-    }
     expect(SEMICOLON);
     
 }
@@ -92,13 +86,12 @@ struct ValueNode* Parser::parse_id_list() {
     //    id_list -> ID COMMA id_list 
     //    id_list -> ID
     Token t = peek();
+
     struct ValueNode *item = (ValueNode*) malloc(sizeof(ValueNode));
+    //puts data in ValueNode
     item->name = new char[t.lexeme.size() + 1];
     std::copy(t.lexeme.begin(), t.lexeme.end(), item->name);
     item->name[t.lexeme.size()] = '\0';
-    
-    
-    //item->name = t.lexeme.c_str();
     item->value = 0;
     
     expect(ID);
@@ -113,6 +106,7 @@ struct ValueNode* Parser::parse_id_list() {
 
 struct StatementNode* Parser::parse_body() {
     //    body -> LBRACE stmt_list RBRACE
+
     expect(LBRACE);
     struct StatementNode *st;
     st = parse_stmt_list();
