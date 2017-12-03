@@ -12,7 +12,8 @@
 #include "parser.h"
 #include <string.h>
 #include <stdio.h>
-#include "DataStructsForGraph.h"
+#include "compiler.h"
+
 /*
  *DATE : NOV. 4
  *TIME : 11:57 AM
@@ -66,12 +67,16 @@ Token Parser::peek()
 
 struct ValueNode *list;
 
+struct StatementNode* Parser::parse_generate_intermediate_representation() {
+    return parse_program();
+}
 
-void Parser::parse_program() {
+
+struct StatementNode* Parser::parse_program() {
     //    program -> var_section body
 
     parse_var_section();  //Completed
-    parse_body(); //returns a StatementNode*
+    return parse_body(); //returns a StatementNode*
 }
 
 void Parser::parse_var_section() {
@@ -86,20 +91,20 @@ struct ValueNode* Parser::parse_id_list() {
     //    id_list -> ID COMMA id_list 
     //    id_list -> ID
     Token t = peek();
-
-    struct ValueNode *item = (ValueNode*) malloc(sizeof(ValueNode));
-    //puts data in ValueNode
-    item->name = new char[t.lexeme.size() + 1];
-    std::copy(t.lexeme.begin(), t.lexeme.end(), item->name);
-    item->name[t.lexeme.size()] = '\0';
-    item->value = 0;
+    struct ValueNode *item;
+//    item->name = new char[t.lexeme.size() + 1];
+//    std::copy(t.lexeme.begin(), t.lexeme.end(), item->name);
+//    item->name[t.lexeme.size()] = '\0';
+//    item->value = 0;
     
     expect(ID);
-    t = peek();
+//    t = peek();
     if(t.token_type == COMMA) {
         expect(COMMA);
-        item->next = parse_id_list();
+        parse_id_list();
+//        item->next = parse_id_list();
     }
+    
     return item;
     
 }
@@ -110,6 +115,8 @@ struct StatementNode* Parser::parse_body() {
     expect(LBRACE);
     struct StatementNode *st;
     st = parse_stmt_list();
+    Token t = peek();
+    //cout << t.lexeme;
     expect(RBRACE);
     return st;
 }
@@ -121,13 +128,12 @@ struct StatementNode* Parser::parse_stmt_list() {
     struct StatementNode *st;
     struct StatementNode *st1;
 
-    //st = parse_stmt();
+    st = parse_stmt();
     Token t = peek();
-    
     if(t.token_type == ID || t.token_type == WHILE || t.token_type == IF
-	|| t.token_type == SWITCH || t.token_type ==  t.token_type == PRINT) {
+	|| t.token_type == SWITCH || t.token_type == PRINT) {
+
 	st1 = parse_stmt_list();
-	//append st1 to st
         st->next = st1;
         return st;
     }
@@ -136,57 +142,86 @@ struct StatementNode* Parser::parse_stmt_list() {
     }
 }
 
-void Parser::parse_stmt() { //TODO: This is where you dissect lines of code
+struct StatementNode* Parser::parse_stmt() { //TODO: This is where you dissect lines of code
     //    stmt -> assign_stmt
     //    stmt -> print_stmt
     //    stmt -> while_stmt
     //    stmt -> if_stmt
     //    stmt -> switch_stmt;
     
+    struct StatementNode *st =(StatementNode*) malloc(sizeof(StatementNode));
     
-
     Token t = peek();
-    if(t.token_type == ID) {
-        parse_assign_stmt();   //RETURNS AN AssignmentStatement* NODE;
+    if(t.token_type == PRINT) {
+        st->type = PRINT_STMT;
+        parse_print_stmt();
+    }
+    else if(t.token_type == ID) {
+        st->type = ASSIGN_STMT;
+        st->assign_stmt = parse_assign_stmt();   //RETURNS AN AssignmentStatement* NODE;
     }
     else if(t.token_type == WHILE) {
+
 	parse_while_stmt();    //RETURNS A _______ * NODE
     }
     else if(t.token_type == IF) {
-	parse_if_stmt();       //RETURNS AN IfStatement* NODE;
+        st->type = IF_STMT;
+	st->if_stmt = parse_if_stmt();       //RETURNS AN IfStatement* NODE;
     }
     else if(t.token_type == SWITCH) {
         parse_switch_stmt();   //RETURNS A _______ * NODE
     }
-    else {
-	parse_print_stmt();
-    }
+  
+    return st;
     
 }
 
-void Parser::parse_assign_stmt() { //Should return AssignmentStatement *node
+struct AssignmentStatement* Parser::parse_assign_stmt() { //Should return AssignmentStatement *node
     //    assign_stmt -> ID EQUAL primary SEMICOLON
     //    assign_stmt -> ID EQUAL expr SEMICOLON
     
-    AssignmentStatement *st = (AssignmentStatement*) malloc(sizeof(AssignmentStatement));
-    ValueNode *lhs = (ValueNode*) malloc(sizeof(ValueNode));
+    struct AssignmentStatement *st = (AssignmentStatement*) malloc(sizeof(AssignmentStatement));
+    struct ValueNode *lhs = (ValueNode*) malloc(sizeof(ValueNode));
+    struct ValueNode *op1 = (ValueNode*) malloc(sizeof(ValueNode));
+    struct ValueNode *op2 = (ValueNode*) malloc(sizeof(ValueNode));
+
     Token t = peek();
-    
+    lhs->name = t.lexeme;
+    lhs->value = 0;
 
     expect(ID);
     expect(EQUAL);
+
+    op1 = parse_primary();
+    
     t = peek();
-    if(t.token_type == ID) {
-        parse_primary();
+    if(t.token_type == PLUS || t.token_type == MINUS || t.token_type == MULT || t.token_type == DIV) {
+	t = lexer.GetToken(); //Gets op
+        if(t.token_type == PLUS) 
+	    st->op = OPERATOR_PLUS;
+	else if(t.token_type == MINUS)
+	    st->op = OPERATOR_MINUS;
+        else if(t.token_type == MULT) 
+ 	    st->op = OPERATOR_MULT;
+	else if(t.token_type == DIV)
+ 	    st->op = OPERATOR_DIV;
+
+        op2 = parse_primary();
     }
     else {
-	parse_expr();
+	st->op = OPERATOR_NONE;
+	op2 = NULL;
     }
     expect(SEMICOLON);
+    st->left_hand_side = lhs;
+    st->operand1 = op1;
+    st->operand2 = op2;
+
+    return st;
 
 }
 
-void Parser::parse_expr() {
+void Parser::parse_expr() { //IS NOT EVER CALLED
     //    expr -> primary op primary
     parse_primary();
     parse_op();
@@ -194,17 +229,23 @@ void Parser::parse_expr() {
 
 }
 
-void Parser::parse_primary() {
+struct ValueNode* Parser::parse_primary() {
     //    primary -> ID
     //    primary -> NUM
     
+    struct ValueNode* node = (ValueNode*) malloc (sizeof(ValueNode));
+
     Token t = peek();
     if(t.token_type == ID) {
+        node->name = t.lexeme;
         expect(ID);
     }
-    if(t.token_type == NUM) {
+    else if(t.token_type == NUM) {
+        node->value = atoi(t.lexeme.c_str());
         expect(NUM);
     }
+
+    return node;
 }
 
 void Parser::parse_op() {
@@ -230,7 +271,12 @@ void Parser::parse_op() {
 
 void Parser::parse_print_stmt() {
     //    print_stmt -> print ID SEMICOLON
+  
     expect(PRINT);
+    struct PrintStatement *st = (PrintStatement*) malloc(sizeof(PrintStatement));
+    struct ValueNode *node = (ValueNode*) malloc(sizeof(ValueNode));
+    Token t = peek();
+    node->name = t.lexeme;
     expect(ID);
     expect(SEMICOLON);
 }
@@ -243,10 +289,15 @@ void Parser::parse_while_stmt() {
 
 }
 
-void Parser::parse_if_stmt() {
+struct IfStatement* Parser::parse_if_stmt() {
     //    if_stmt -> IF condition body
+
+    struct IfStatement *st = (IfStatement*) malloc (sizeof(IfStatement));
+
     expect(IF);
+
     parse_condition();
+
     parse_body();
     
 }
@@ -670,12 +721,5 @@ void Parser::ParseInput()
 {
     parse_program();
     expect(END_OF_FILE);
-}
-
-int main()
-{
-    Parser parser;
-
-    parser.ParseInput();
 }
 
