@@ -168,7 +168,20 @@ struct StatementNode*  parse_stmt_list() {
     if(t.token_type == ID || t.token_type == WHILE || t.token_type == IF
 	|| t.token_type == SWITCH || t.token_type == PRINT) {
 
-	st1 = parse_stmt_list();
+	    st1 = parse_stmt_list();
+	    if(st->type == IF_STMT) {
+	    StatementNode *tempPoint = st;
+        while(tempPoint->next != NULL) {
+            tempPoint = tempPoint->next;
+        }
+        tempPoint->next = st1;
+	    }
+	    else {
+	    st->next = st1;
+	    }
+	    
+	    
+	    
         st->next = st1;
         return st;
     }
@@ -190,7 +203,8 @@ struct StatementNode*  parse_stmt() { //TODO: This is where you dissect lines of
     if(t.token_type == PRINT) {
         st->type = PRINT_STMT;
         st->print_stmt = parse_print_stmt();
-        st->next = NULL;
+       
+            st->next = NULL;
     }
     else if(t.token_type == ID) {
         st->type = ASSIGN_STMT;
