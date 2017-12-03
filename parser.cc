@@ -13,7 +13,13 @@
 #include <string.h>
 #include <stdio.h>
 #include "compiler.h"
+#include "lexer.h"
+#include <map>
 
+
+
+
+LexicalAnalyzer lexer;
 /*
  *DATE : NOV. 4
  *TIME : 11:57 AM
@@ -30,12 +36,40 @@
  *Semantic OK    : 0 / 22
 */
 
+void syntax_error();
+        Token expect(TokenType expected_type);
+        Token peek();
 
+       
+	void parse_var_section();
+	struct ValueNode* parse_id_list();
+	struct StatementNode* parse_body();
+	struct StatementNode* parse_stmt_list();
+	struct StatementNode* parse_stmt();
+	struct AssignmentStatement* parse_assign_stmt();
+	void parse_expr();
+	struct ValueNode* parse_primary();
+	void parse_op();
+	struct PrintStatement* parse_print_stmt();
+	void parse_while_stmt();
+	struct IfStatement* parse_if_stmt();
+	void parse_condition();
+	void parse_relop();
+	void parse_switch_stmt();
+	void parse_for_stmt();
+	void parse_case_list();
+	void parse_case();
+	void parse_default_case();
+    struct StatementNode* parse_generate_intermediate_representation();
+         struct StatementNode* parse_program();
+        void ParseInput();
 
 
 using namespace std;
 
-void Parser::syntax_error()
+map<string,ValueNode*> list;
+
+void  syntax_error()
 {
     cout << "Syntax Error\n";
     exit(1);
@@ -47,7 +81,7 @@ void Parser::syntax_error()
 // this function is particularly useful to match
 // terminals in a right hand side of a rule.
 // Written by Mohsen Zohrevandi
-Token Parser::expect(TokenType expected_type)
+Token  expect(TokenType expected_type)
 {
     Token t = lexer.GetToken();
     if (t.token_type != expected_type)
@@ -58,58 +92,56 @@ Token Parser::expect(TokenType expected_type)
 // this function simply checks the next token without
 // consuming the input
 // Written by Mohsen Zohrevandi
-Token Parser::peek()
+Token  peek()
 {
     Token t = lexer.GetToken();
     lexer.UngetToken(t);
     return t;
 }
 
-struct ValueNode *list;
 
-struct StatementNode* Parser::parse_generate_intermediate_representation() {
+
+struct StatementNode* parse_generate_intermediate_representation() {
     return parse_program();
 }
 
 
-struct StatementNode* Parser::parse_program() {
+struct StatementNode*  parse_program() {
     //    program -> var_section body
 
     parse_var_section();  //Completed
     return parse_body(); //returns a StatementNode*
 }
 
-void Parser::parse_var_section() {
+void  parse_var_section() {
     //    var_section -> id_list SEMICOLON
 
-    list = parse_id_list();
+    parse_id_list();
     expect(SEMICOLON);
     
 }
-
-struct ValueNode* Parser::parse_id_list() {
+//list[whatever it is, a string]
+struct ValueNode*  parse_id_list() {
     //    id_list -> ID COMMA id_list 
     //    id_list -> ID
     Token t = peek();
-    struct ValueNode *item;
-//    item->name = new char[t.lexeme.size() + 1];
-//    std::copy(t.lexeme.begin(), t.lexeme.end(), item->name);
-//    item->name[t.lexeme.size()] = '\0';
-//    item->value = 0;
+    struct ValueNode *item = new ValueNode;
+    item->name = t.lexeme;
+    item->value = 0;
+    list[t.lexeme] = item;
     
     expect(ID);
 //    t = peek();
     if(t.token_type == COMMA) {
         expect(COMMA);
         parse_id_list();
-//        item->next = parse_id_list();
     }
     
     return item;
     
 }
 
-struct StatementNode* Parser::parse_body() {
+struct StatementNode*  parse_body() {
     //    body -> LBRACE stmt_list RBRACE
 
     expect(LBRACE);
@@ -118,10 +150,12 @@ struct StatementNode* Parser::parse_body() {
     Token t = peek();
     //cout << t.lexeme;
     expect(RBRACE);
+    
+    
     return st;
 }
 
-struct StatementNode* Parser::parse_stmt_list() {
+struct StatementNode*  parse_stmt_list() {
     //    stmt_list -> stmt
     //    stmt_list -> stmt stmt_list
     
@@ -142,7 +176,7 @@ struct StatementNode* Parser::parse_stmt_list() {
     }
 }
 
-struct StatementNode* Parser::parse_stmt() { //TODO: This is where you dissect lines of code
+struct StatementNode*  parse_stmt() { //TODO: This is where you dissect lines of code
     //    stmt -> assign_stmt
     //    stmt -> print_stmt
     //    stmt -> while_stmt
@@ -154,7 +188,7 @@ struct StatementNode* Parser::parse_stmt() { //TODO: This is where you dissect l
     Token t = peek();
     if(t.token_type == PRINT) {
         st->type = PRINT_STMT;
-        parse_print_stmt();
+        st->print_stmt = parse_print_stmt();
     }
     else if(t.token_type == ID) {
         st->type = ASSIGN_STMT;
@@ -176,7 +210,7 @@ struct StatementNode* Parser::parse_stmt() { //TODO: This is where you dissect l
     
 }
 
-struct AssignmentStatement* Parser::parse_assign_stmt() { //Should return AssignmentStatement *node
+struct AssignmentStatement*  parse_assign_stmt() { //Should return AssignmentStatement *node
     //    assign_stmt -> ID EQUAL primary SEMICOLON
     //    assign_stmt -> ID EQUAL expr SEMICOLON
     
@@ -186,6 +220,7 @@ struct AssignmentStatement* Parser::parse_assign_stmt() { //Should return Assign
     struct ValueNode *op2 = (ValueNode*) malloc(sizeof(ValueNode));
 
     Token t = peek();
+    st->left_hand_side = list[t.lexeme];
     lhs->name = t.lexeme;
     lhs->value = 0;
 
@@ -221,7 +256,7 @@ struct AssignmentStatement* Parser::parse_assign_stmt() { //Should return Assign
 
 }
 
-void Parser::parse_expr() { //IS NOT EVER CALLED
+void  parse_expr() { //IS NOT EVER CALLED
     //    expr -> primary op primary
     parse_primary();
     parse_op();
@@ -229,15 +264,16 @@ void Parser::parse_expr() { //IS NOT EVER CALLED
 
 }
 
-struct ValueNode* Parser::parse_primary() {
+struct ValueNode*  parse_primary() {
     //    primary -> ID
     //    primary -> NUM
     
     struct ValueNode* node = (ValueNode*) malloc (sizeof(ValueNode));
-
+      
     Token t = peek();
     if(t.token_type == ID) {
-        node->name = t.lexeme;
+     
+        node = list[t.lexeme];
         expect(ID);
     }
     else if(t.token_type == NUM) {
@@ -248,7 +284,7 @@ struct ValueNode* Parser::parse_primary() {
     return node;
 }
 
-void Parser::parse_op() {
+void  parse_op() {
     //    op -> PLUS 
     //    op -> MINUS 
     //    op -> MULT 
@@ -269,19 +305,21 @@ void Parser::parse_op() {
     }    
 }
 
-void Parser::parse_print_stmt() {
+struct PrintStatement*  parse_print_stmt() {
     //    print_stmt -> print ID SEMICOLON
   
     expect(PRINT);
     struct PrintStatement *st = (PrintStatement*) malloc(sizeof(PrintStatement));
-    struct ValueNode *node = (ValueNode*) malloc(sizeof(ValueNode));
+    
+    
     Token t = peek();
-    node->name = t.lexeme;
+    st->id = list[t.lexeme]; 
     expect(ID);
     expect(SEMICOLON);
+    return st;
 }
 
-void Parser::parse_while_stmt() {
+void  parse_while_stmt() {
     //    while_stmt -> WHILE condition body
     expect(WHILE);
     parse_condition();
@@ -289,7 +327,7 @@ void Parser::parse_while_stmt() {
 
 }
 
-struct IfStatement* Parser::parse_if_stmt() {
+struct IfStatement*  parse_if_stmt() {
     //    if_stmt -> IF condition body
 
     struct IfStatement *st = (IfStatement*) malloc (sizeof(IfStatement));
@@ -299,10 +337,11 @@ struct IfStatement* Parser::parse_if_stmt() {
     parse_condition();
 
     parse_body();
+    return NULL;    //TODO
     
 }
 
-void Parser::parse_condition() {
+void  parse_condition() {
     //    condition -> primary relop primary
     parse_primary();
     parse_relop();
@@ -310,7 +349,7 @@ void Parser::parse_condition() {
 
 }
 
-void Parser::parse_relop() {
+void  parse_relop() {
     //    relop -> GREATER 
     //    relop -> LESS 
     //    relop -> NOTEQUAL
@@ -326,7 +365,7 @@ void Parser::parse_relop() {
     } 
 }
 
-void Parser::parse_switch_stmt() {
+void  parse_switch_stmt() {
     //    switch_stmt -> SWITCH ID LBRACE case_list RBRACE
     //    switch_stmt -> SWITCH ID LBRACE case_list default_case RBRACE
     expect(SWITCH);
@@ -340,7 +379,7 @@ void Parser::parse_switch_stmt() {
     expect(RBRACE);
 }
 
-void Parser::parse_for_stmt() {
+void  parse_for_stmt() {
     //    for_stmt -> FOR LPAREN assign_stmt SEMICOLON condition SEMICOLON RPAREN body
     expect(LPAREN);
     parse_assign_stmt();
@@ -351,7 +390,7 @@ void Parser::parse_for_stmt() {
     parse_body();
 }
 
-void Parser::parse_case_list() {
+void  parse_case_list() {
     //    case_list -> case case_list
     //    case_list -> case
     parse_case();
@@ -361,7 +400,7 @@ void Parser::parse_case_list() {
     }
 }
 
-void Parser::parse_case() {
+void  parse_case() {
     //    case -> CASE NUM COLON body
     expect(CASE);
     expect(NUM);
@@ -369,7 +408,7 @@ void Parser::parse_case() {
     parse_body();
 }
 
-void Parser::parse_default_case() {
+void  parse_default_case() {
     //    default_case -> DEFAULT COLON body
     expect(DEFAULT);
     expect(COLON);
@@ -387,14 +426,14 @@ void Parser::parse_default_case() {
 //old stuff
 //
 /*
-void Parser::parse_program()
+void  parse_program()
 {
     // program -> scope
     
     parse_scope();
 }
 
-void Parser::parse_scope()
+void  parse_scope()
 {
     // scope -> { scope_list }
     
@@ -406,7 +445,7 @@ void Parser::parse_scope()
 }
 
 
-void Parser::parse_scope_list()
+void  parse_scope_list()
 {
     // scope_list -> stmt
     // scope_list -> scope
@@ -454,7 +493,7 @@ void Parser::parse_scope_list()
     }
 }
 
-void Parser::parse_declaration()
+void  parse_declaration()
 {
     // declaration -> type_decl
     // declaration -> var_decl
@@ -466,7 +505,7 @@ void Parser::parse_declaration()
     	parse_var_decl();
 }
 
-void Parser::parse_type_decl()
+void  parse_type_decl()
 {
     // type_decl -> TYPE id_list COLON type_name SEMICOLON
 
@@ -477,7 +516,7 @@ void Parser::parse_type_decl()
     expect(SEMICOLON);
 }
 
-void Parser::parse_type_name()
+void  parse_type_name()
 {
     // type_name -> REAL
     // type_name -> INT
@@ -494,7 +533,7 @@ void Parser::parse_type_name()
     }
 }
 
-void Parser::parse_var_decl()
+void  parse_var_decl()
 {
     // var_decl -> VAR id_list COLON type_name SEMICOLON
 
@@ -505,7 +544,7 @@ void Parser::parse_var_decl()
     expect(SEMICOLON);
 }
 
-void Parser::parse_id_list()
+void  parse_id_list()
 {
     // id_list -> ID
     // id_list -> ID COMMA id_list
@@ -527,7 +566,7 @@ void Parser::parse_id_list()
 }
 
 
-void Parser::parse_stmt_list()
+void  parse_stmt_list()
 {
     // stmt_list -> stmt
     // stmt_list -> stmt stmt_list
@@ -550,7 +589,7 @@ void Parser::parse_stmt_list()
     }
 }
 
-void Parser::parse_stmt()
+void  parse_stmt()
 {
     // stmt -> assign_stmt
     // stmt -> while_stmt
@@ -568,7 +607,7 @@ void Parser::parse_stmt()
     
 }
 
-void Parser::parse_assign_stmt()
+void  parse_assign_stmt()
 {
     // assign_stmt -> ID EQUAL expr SEMICOLON
 
@@ -578,7 +617,7 @@ void Parser::parse_assign_stmt()
     expect(SEMICOLON);
 }
 
-void Parser::parse_while_stmt()
+void  parse_while_stmt()
 {
    // while_stmt -> WHILE condition LBRACE stmt list RBRACE
 
@@ -589,7 +628,7 @@ void Parser::parse_while_stmt()
     expect(RBRACE);
 }
 
-void Parser::parse_expr()
+void  parse_expr()
 {
     // expr -> term 
     // expr -> term + expr
@@ -602,7 +641,7 @@ void Parser::parse_expr()
     }
 }
 
-void Parser::parse_term()
+void  parse_term()
 {
     // term -> factor
     // term -> factor MULT term
@@ -615,7 +654,7 @@ void Parser::parse_term()
     }
 }
 
-void Parser::parse_factor()
+void  parse_factor()
 {
     // factor -> LPAREN expr RPAREN
     // factor -> NUM
@@ -642,7 +681,7 @@ void Parser::parse_factor()
     }
 }
 
-void Parser::parse_condition()
+void  parse_condition()
 {
     // condition -> ID
     // condition -> primary relop primary
@@ -668,7 +707,7 @@ void Parser::parse_condition()
     }
 }
 
-void Parser::parse_primary()
+void  parse_primary()
 {
     // primary -> ID
     // primary -> NUM
@@ -688,7 +727,7 @@ void Parser::parse_primary()
     }
 }
 
-void Parser::parse_relop()
+void  parse_relop()
 {
     // relop -> GREATER
     // relop -> GTEQ
@@ -717,7 +756,7 @@ void Parser::parse_relop()
     }
 }
 */
-void Parser::ParseInput()
+void  ParseInput()
 {
     parse_program();
     expect(END_OF_FILE);

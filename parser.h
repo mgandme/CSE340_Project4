@@ -10,14 +10,14 @@
 #include "lexer.h"
 
 class Parser {
-    private:
+    public:
 	LexicalAnalyzer lexer;
 
         void syntax_error();
         Token expect(TokenType expected_type);
         Token peek();
 
-        struct StatementNode* parse_program();
+       
 	void parse_var_section();
 	struct ValueNode* parse_id_list();
 	struct StatementNode* parse_body();
@@ -38,8 +38,7 @@ class Parser {
 	void parse_case();
 	void parse_default_case();
         struct StatementNode* parse_generate_intermediate_representation();
-
-    public:
+         struct StatementNode* parse_program();
         void ParseInput();
 };
 
