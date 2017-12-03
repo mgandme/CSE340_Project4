@@ -9,7 +9,7 @@
  */
 #include <iostream>
 #include <cstdlib>
-#include "parser.h"
+
 #include <string.h>
 #include <stdio.h>
 #include "compiler.h"
@@ -53,8 +53,8 @@ void syntax_error();
 	struct PrintStatement* parse_print_stmt();
 	void parse_while_stmt();
 	struct IfStatement* parse_if_stmt();
-	void parse_condition();
-	void parse_relop();
+	struct IfStatement* parse_condition();
+	ConditionalOperatorType parse_relop();
 	void parse_switch_stmt();
 	void parse_for_stmt();
 	void parse_case_list();
@@ -131,8 +131,9 @@ struct ValueNode*  parse_id_list() {
     list[t.lexeme] = item;
     
     expect(ID);
-//    t = peek();
+    t = peek();
     if(t.token_type == COMMA) {
+         
         expect(COMMA);
         parse_id_list();
     }
@@ -189,10 +190,13 @@ struct StatementNode*  parse_stmt() { //TODO: This is where you dissect lines of
     if(t.token_type == PRINT) {
         st->type = PRINT_STMT;
         st->print_stmt = parse_print_stmt();
+        st->next = NULL;
     }
     else if(t.token_type == ID) {
         st->type = ASSIGN_STMT;
+        
         st->assign_stmt = parse_assign_stmt();   //RETURNS AN AssignmentStatement* NODE;
+        st->next = NULL;
     }
     else if(t.token_type == WHILE) {
 
@@ -200,7 +204,11 @@ struct StatementNode*  parse_stmt() { //TODO: This is where you dissect lines of
     }
     else if(t.token_type == IF) {
         st->type = IF_STMT;
-	st->if_stmt = parse_if_stmt();       //RETURNS AN IfStatement* NODE;
+        struct IfStatement *node = parse_if_stmt();
+	    st->if_stmt = node;
+	    st->next = node->false_branch;
+	      
+	      //RETURNS AN IfStatement* NODE;
     }
     else if(t.token_type == SWITCH) {
         parse_switch_stmt();   //RETURNS A _______ * NODE
@@ -221,8 +229,8 @@ struct AssignmentStatement*  parse_assign_stmt() { //Should return AssignmentSta
 
     Token t = peek();
     st->left_hand_side = list[t.lexeme];
-    lhs->name = t.lexeme;
-    lhs->value = 0;
+    
+    
 
     expect(ID);
     expect(EQUAL);
@@ -248,7 +256,6 @@ struct AssignmentStatement*  parse_assign_stmt() { //Should return AssignmentSta
 	op2 = NULL;
     }
     expect(SEMICOLON);
-    st->left_hand_side = lhs;
     st->operand1 = op1;
     st->operand2 = op2;
 
@@ -330,38 +337,55 @@ void  parse_while_stmt() {
 struct IfStatement*  parse_if_stmt() {
     //    if_stmt -> IF condition body
 
-    struct IfStatement *st = (IfStatement*) malloc (sizeof(IfStatement));
+    struct IfStatement *node = (IfStatement*) malloc (sizeof(IfStatement));
+    
 
-    expect(IF);
+    Token t = lexer.GetToken();
+    node->condition_operand1 =  parse_primary();
+    node->condition_op = parse_relop();
+    node->condition_operand2 = parse_primary();
+    struct StatementNode* temp = parse_body();
+    struct StatementNode* false_node = new StatementNode;
+	false_node->type = NOOP_STMT;
+	temp->next = false_node;
+    
+    node->true_branch = temp;
+    node->false_branch = false_node;
+    
+    
+	
 
-    parse_condition();
-
-    parse_body();
-    return NULL;    //TODO
+    return node;    
     
 }
 
-void  parse_condition() {
+struct IfStatement*  parse_condition() {
     //    condition -> primary relop primary
-    parse_primary();
-    parse_relop();
-    parse_primary();
+    struct IfStatement *node = new IfStatement;
+    
+    
+    
+    return node;
 
 }
 
-void  parse_relop() {
+ConditionalOperatorType parse_relop() {
     //    relop -> GREATER 
     //    relop -> LESS 
     //    relop -> NOTEQUAL
     Token t = peek();
+    
     if(t.token_type == GREATER) {
 	expect(GREATER);
+	return CONDITION_GREATER;
     }
-    if(t.token_type == LESS) {
+    else if(t.token_type == LESS) {
 	expect(LESS);
+	return CONDITION_LESS;
     }
-    if(t.token_type == NOTEQUAL) {
+    else if(t.token_type == NOTEQUAL) {
 	expect(NOTEQUAL);
+	return CONDITION_NOTEQUAL;
     } 
 }
 
@@ -417,345 +441,6 @@ void  parse_default_case() {
 
 
 
-
-
-
-
-
-
-//old stuff
-//
-/*
-void  parse_program()
-{
-    // program -> scope
-    
-    parse_scope();
-}
-
-void  parse_scope()
-{
-    // scope -> { scope_list }
-    
-    expect(LBRACE);
-    parse_scope_list();
-    expect(RBRACE);
-    
-    //ending scope variable?
-}
-
-
-void  parse_scope_list()
-{
-    // scope_list -> stmt
-    // scope_list -> scope
-    // scope_list -> declaration
-    // scope_list -> stmt scope_list
-    // scope_list -> scope scope_list
-    // scope_list -> declaration scope_list
-
-
-    Token t = peek();
-
-    if(t.token_type == ID || t.token_type == WHILE) {
-	parse_stmt();
-	t = peek();
-
-	if(t.token_type == ID || t.token_type == WHILE
-	|| t.token_type == TYPE || t.token_type == VAR
-	|| t.token_type == LBRACE) {
-	    parse_scope_list();
-	}
-    }
-    else if(t.token_type == TYPE || t.token_type == VAR) {
-	parse_declaration();
-	t = peek();        
-
-	if(t.token_type == ID || t.token_type == WHILE
-        || t.token_type == TYPE || t.token_type == VAR
-        || t.token_type == LBRACE) {
-            parse_scope_list();
-        }
-    }
-    else if(t.token_type == LBRACE) {
-	parse_scope();
-	t = peek();
-	
-        if(t.token_type == ID || t.token_type == WHILE
-        || t.token_type == TYPE || t.token_type == VAR
-        || t.token_type == LBRACE) {
-            parse_scope_list();
-        }
-
-    }
-    else {
-	syntax_error();
-    }
-}
-
-void  parse_declaration()
-{
-    // declaration -> type_decl
-    // declaration -> var_decl
-
-    Token t = peek();
-    if (t.token_type == TYPE)
-    	parse_type_decl();
-    if (t.token_type == VAR)
-    	parse_var_decl();
-}
-
-void  parse_type_decl()
-{
-    // type_decl -> TYPE id_list COLON type_name SEMICOLON
-
-    expect(TYPE);
-    parse_id_list();
-    expect(COLON);
-    parse_type_name();
-    expect(SEMICOLON);
-}
-
-void  parse_type_name()
-{
-    // type_name -> REAL
-    // type_name -> INT
-    // type_name -> BOOLEAN
-    // type_name -> STRING
-    // type_name -> LONG
-    // type_name -> ID
-
-    Token t = lexer.GetToken();
-    if(t.token_type != REAL && t.token_type != INT &&
-    t.token_type != BOOLEAN && t.token_type != STRING &&
-    t.token_type != LONG && t.token_type != ID) {
-	syntax_error();
-    }
-}
-
-void  parse_var_decl()
-{
-    // var_decl -> VAR id_list COLON type_name SEMICOLON
-
-    expect(VAR);
-    currScope->table = parse_id_list();
-    expect(COLON);
-    parse_type_name();
-    expect(SEMICOLON);
-}
-
-void  parse_id_list()
-{
-    // id_list -> ID
-    // id_list -> ID COMMA id_list
-
-    Token curr = peek();
-    expect(ID);
-    Token t = peek();
-    if(t.token_type == COMMA) {
-	expect(COMMA);
-        return var;
-    }
-    else {
-	var->line_no = curr.line_no;
-	char *c = curr.lexeme;
-	var->name.assign(c, sizeof(curr.lexeme));
-	return var;
-    }
-    
-}
-
-
-void  parse_stmt_list()
-{
-    // stmt_list -> stmt
-    // stmt_list -> stmt stmt_list
-    
-    parse_stmt();
-    Token t = peek();
-    if (t.token_type == WHILE || t.token_type == ID)
-    {
-        // stmt_list -> stmt stmt_list
-        parse_stmt_list();
-    }
-    else if (t.token_type == RBRACE)
-    {
-        // stmt_list -> stmt
-	//parse_stmt();	
-    }
-    else
-    {
-        syntax_error();
-    }
-}
-
-void  parse_stmt()
-{
-    // stmt -> assign_stmt
-    // stmt -> while_stmt
- 
-    Token t = peek();
-    if(t.token_type == ID) {
-	parse_assign_stmt();
-    }
-    else if(t.token_type == WHILE) {
-	parse_while_stmt();
-    }
-    else {
-	syntax_error();
-    }
-    
-}
-
-void  parse_assign_stmt()
-{
-    // assign_stmt -> ID EQUAL expr SEMICOLON
-
-    expect(ID);
-    expect(EQUAL);
-    parse_expr();
-    expect(SEMICOLON);
-}
-
-void  parse_while_stmt()
-{
-   // while_stmt -> WHILE condition LBRACE stmt list RBRACE
-
-    expect(WHILE);
-    parse_condition();
-    expect(LBRACE);
-    parse_stmt_list();
-    expect(RBRACE);
-}
-
-void  parse_expr()
-{
-    // expr -> term 
-    // expr -> term + expr
-
-    parse_term();
-    Token t = peek();
-    if(t.token_type == PLUS) {
-	lexer.GetToken();
-	parse_expr();
-    }
-}
-
-void  parse_term()
-{
-    // term -> factor
-    // term -> factor MULT term
-
-    parse_factor();
-    Token t = peek();
-    if(t.token_type == MULT) {
-	lexer.GetToken();
-	parse_term();
-    }
-}
-
-void  parse_factor()
-{
-    // factor -> LPAREN expr RPAREN
-    // factor -> NUM
-    // factor -> REALNUM
-    // factor -> ID
-
-    Token t = peek();
-    if(t.token_type == LPAREN) {
-	expect(LPAREN);
-	parse_expr();
-	expect(RPAREN);
-    }
-    else if(t.token_type == NUM) {
-	expect(NUM);
-    }
-    else if(t.token_type == REALNUM) {
-	expect(REALNUM);
-    }
-    else if(t.token_type == ID) {
-	expect(ID);
-    }
-    else {
-	syntax_error();
-    }
-}
-
-void  parse_condition()
-{
-    // condition -> ID
-    // condition -> primary relop primary
-    
-    Token t = peek();
-    if(t.token_type == NUM || t.token_type == REALNUM) {
-	parse_primary();
-	parse_relop();
-	parse_primary();
-    }
-    else if(t.token_type == ID) {
-	expect(ID);
-	t = peek();
-	if(t.token_type == GREATER || t.token_type == GTEQ ||
-	t.token_type == LESS || t.token_type == NOTEQUAL || 
-	t.token_type == LTEQ) {
-	    parse_relop();
-	    parse_primary();
-	} 
-    }
-    else {
-	syntax_error();
-    }
-}
-
-void  parse_primary()
-{
-    // primary -> ID
-    // primary -> NUM
-    // primary -> REALNUM
-    Token t = peek();
-    if(t.token_type == ID) {
-	expect(ID);
-    }
-    else if(t.token_type == NUM) {
-	expect(NUM);
-    }
-    else if(t.token_type == REALNUM) {
-	expect(REALNUM);
-    }
-    else {
-	syntax_error();
-    }
-}
-
-void  parse_relop()
-{
-    // relop -> GREATER
-    // relop -> GTEQ
-    // relop -> LESS
-    // relop -> NOTEQ
-    // relop -> LTEQ
-
-    Token t = peek();
-    if(t.token_type == GREATER) {
-	expect(GREATER);
-    }
-    else if(t.token_type == GTEQ) {
-	expect(GTEQ);
-    }
-    else if(t.token_type == LESS) {
-        expect(LESS);
-    }
-    else if(t.token_type == NOTEQUAL) {
-	expect(NOTEQUAL);
-    }
-    else if(t.token_type == LTEQ) {
-	expect(LTEQ);
-    }
-    else {
-	syntax_error();
-    }
-}
-*/
 void  ParseInput()
 {
     parse_program();
