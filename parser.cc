@@ -345,10 +345,16 @@ struct IfStatement*  parse_if_stmt() {
     node->condition_op = parse_relop();
     node->condition_operand2 = parse_primary();
     struct StatementNode* temp = parse_body();
+    
     struct StatementNode* false_node = new StatementNode;
 	false_node->type = NOOP_STMT;
-	temp->next = false_node;
+    false_node->next = NULL;
     
+    StatementNode *tempPoint = temp;
+    while(tempPoint->next != NULL) {
+        tempPoint = tempPoint->next;
+    }
+    tempPoint->next = false_node;
     node->true_branch = temp;
     node->false_branch = false_node;
     
